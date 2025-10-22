@@ -1,14 +1,28 @@
 // SnipGuard detectors: API keys, PII, simple code heuristics (on-device only)
 const SG_RE = {
   // Secrets
-  openai: /sk-[A-Za-z0-9]{20,}/g,                 // OpenAI
-  gh_pat: /github_pat_[A-Za-z0-9_]{80,}/g,        // GitHub PAT
-  slack: /xo(?:xa|xb|xp)-[A-Za-z0-9-]{10,48}/g,   // Slack tokens
-  stripe: /sk_(?:test|live)_[A-Za-z0-9]{20,}/g,   // Stripe secret key
-  aws_akid: /AKIA[0-9A-Z]{16}/g,                  // AWS access key id
-  gcp_api: /\bAIza[0-9A-Za-z\-_]{35}\b/g,      // Google API key
-  twilio: /SK[0-9a-fA-F]{32}/g,                   // Twilio API key (one pattern)
-  telegram_bot: /(?:(?:^|[^a-zA-Z]))\d{9,10}:[A-Za-z0-9_-]{35}/g, // Telegram bot token
+  openai: /sk-[A-Za-z0-9]{20,}/g,                                               // OpenAI
+  gh_pat: /github_pat_[A-Za-z0-9_]{80,}/g,                                      // GitHub PAT
+  slack: /xo(?:xa|xb|xp)-[A-Za-z0-9-]{10,48}/g,                                 // Slack tokens
+  stripe: /sk_(?:test|live)_[A-Za-z0-9]{20,}/g,                                 // Stripe secret key
+  aws_akid: /AKIA[0-9A-Z]{16}/g,                                                // AWS access key id
+  gcp_api: /\bAIza[0-9A-Za-z\-_]{35}\b/g,                                       // Google API key
+  twilio: /SK[0-9a-fA-F]{32}/g,                                                 // Twilio API key (one pattern)
+  telegram_bot: /(?:(?:^|[^a-zA-Z]))\d{9,10}:[A-Za-z0-9_-]{35}/g,               // Telegram bot token
+  // Azure Storage connection string, doc: https://learn.microsoft.com/en-us/azure/storage/common/storage-configure-connection-string
+  azure_storage_conn: /DefaultEndpointsProtocol=(?:https|http);AccountName=[a-z0-9]{3,24};AccountKey=[A-Za-z0-9+/=]{40,}=;EndpointSuffix=core\.windows\.net/gi,
+  // Azure SQL connection string, doc: https://learn.microsoft.com/en-us/azure/azure-sql/database/connect-query-content-reference-guide
+  azure_sql_conn: /Server=tcp:[A-Za-z0-9\-.]+,?\d*;Database=[A-Za-z0-9_\-]+;User ID=[^;]+;Password=[^;]+;/i,
+  // Azure AD application client secret, doc: https://learn.microsoft.com/en-us/entra/identity-platform/how-to-add-credentials
+  azure_client_secret: /AZURE_CLIENT_SECRET\s*[:=]\s*[A-Za-z0-9._~+\-/]{16,}/g,
+  // Discord bot token, doc: https://discord.com/developers/docs/reference
+  discord_bot: /[0-9]{24}\.[A-Za-z0-9_-]{6}\.[A-Za-z0-9_-]{27}/g,
+  // Firebase OAUTH bearer token doc: https://firebase.google.com/docs/cloud-messaging/send/v1-api
+  google_oauth_access_token: /\bya29\.[A-Za-z0-9_-]{20,}\b/g,
+  // Cloudflare API Token, doc: https://developers.cloudflare.com/fundamentals/api/get-started/create-token/
+  cloudflare_api_token: /(CF_API_TOKEN|CLOUDFLARE_API_TOKEN)\s*[:=]\s*[A-Za-z0-9-_]{40,}/i,
+  // PostgreSQL connection URI, doc: https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
+  postgres_url_creds: /\bpostgres(?:ql)?:\/\/[^:\s\/]+:[^@\s\/]+@[^\/\s:]+(?::\d+)?\/[A-Za-z0-9._\-]+(?:\?[^\s'"]+)?\b/,
   // PEM blocks
   pem: /-----BEGIN (?:RSA|EC|OPENSSH|PRIVATE) KEY-----[\s\S]+?-----END [^-]+-----/g,
   // PII
