@@ -1,22 +1,37 @@
-# .github/workflows/ci.yml
 name: ci
+
 on:
   pull_request:
     branches: [ main ]
   push:
     branches: [ main ]
+
 jobs:
   test-and-artifact:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
-        with: { node-version: '20' }
-      - run: npm ci || npm i
+        with:
+          node-version: '20'
+
+      - run: npm ci
+
       - run: npm test
+
       - name: Build preview zip
-        run: zip -r snipguard-preview.zip . -x "*.git*"
+        run: |
+          zip -r snipguard-preview.zip . \
+            --exclude ".git/*" \
+            --exclude "node_modules/*" \
+            --exclude "tests/*" \
+            --exclude ".github/*" \
+            --exclude "tools/*" \
+            --exclude "*.zip"
+
       - uses: actions/upload-artifact@v4
         with:
           name: snipguard-preview
           path: snipguard-preview.zip
+          retention-days: 7

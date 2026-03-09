@@ -1,15 +1,22 @@
 name: release-please
+
 on:
   push:
     branches: [ main ]
+
 permissions:
   contents: write
   pull-requests: write
+
 jobs:
   release-please:
     runs-on: ubuntu-latest
     steps:
       - uses: googleapis/release-please-action@v4
         with:
+          # GITHUB_TOKEN cannot create PRs when the org policy "Allow GitHub
+          # Actions to create and approve pull requests" is disabled.
+          # Create a fine-grained PAT with Contents: write + Pull requests: write
+          # on this repo and store it as the RELEASE_PLEASE_TOKEN secret.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           release-type: node
-          package-name: snipguard
