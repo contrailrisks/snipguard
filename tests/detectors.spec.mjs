@@ -17,6 +17,11 @@ const detectorFiles = [
   'secrets/github.js',
   'secrets/aws.js',
   'secrets/stripe.js',
+  'secrets/azure.js',
+  'secrets/discord.js',
+  'secrets/firebase.js',
+  'secrets/cloudflare.js',
+  'secrets/postgres.js',
   'pii/email.js',
   'pii/phone.js',
   'pii/credit-card.js',
@@ -34,7 +39,7 @@ for (const f of detectorFiles) {
 const { detectAll, sanitize } = sandbox.window.SG;
 
 // ---------------------------------------------------------------------------
-// API key detection
+// API key detection — original providers
 // ---------------------------------------------------------------------------
 describe('API key detection', () => {
   it('detects OpenAI keys', () => {
@@ -70,6 +75,70 @@ describe('API key detection', () => {
 });
 
 // ---------------------------------------------------------------------------
+// API key detection — provider pack (#9)
+// ---------------------------------------------------------------------------
+describe('Provider pack detection', () => {
+  it('detects Azure Storage connection string', () => {
+    const t = 'DefaultEndpointsProtocol=https;AccountName=devstoreaccount1;AccountKey=' + 'A'.repeat(88) + '==';
+    const r = detectAll(t, {});
+    expect(r.some(d => d.key === 'azure_storage')).toBeTruthy();
+  });
+
+  it('redacts Azure AccountKey but preserves AccountName', () => {
+    const t = 'DefaultEndpointsProtocol=https;AccountName=myaccount;AccountKey=' + 'A'.repeat(88) + '==';
+    const r = detectAll(t, {});
+    const s = sanitize(t, r);
+    expect(s.includes('myaccount')).toBeTruthy();
+    expect(s.includes('AccountKey=[REDACTED]')).toBeTruthy();
+  });
+
+  it('detects Discord bot token', () => {
+    // Format: [MNO] + 23 alphanum . 6 alphanum/dash . 27 alphanum/dash
+    const t = 'M' + 'A'.repeat(23) + '.' + 'B'.repeat(6) + '.' + 'C'.repeat(27);
+    const r = detectAll(t, {});
+    expect(r.some(d => d.key === 'discord')).toBeTruthy();
+  });
+
+  it('detects Firebase/Google API key', () => {
+    const t = 'apiKey: AIza' + 'A'.repeat(35);
+    const r = detectAll(t, {});
+    expect(r.some(d => d.key === 'firebase')).toBeTruthy();
+  });
+
+  it('detects Cloudflare API token via env var name', () => {
+    const t = 'CF_API_TOKEN=' + 'a'.repeat(40);
+    const r = detectAll(t, {});
+    expect(r.some(d => d.key === 'cloudflare')).toBeTruthy();
+  });
+
+  it('does not flag arbitrary 40-char strings without Cloudflare context', () => {
+    const t = 'some_random_value=' + 'a'.repeat(40);
+    const r = detectAll(t, {});
+    expect(r.some(d => d.key === 'cloudflare')).toBeFalsy();
+  });
+
+  it('detects Postgres URL with credentials', () => {
+    const t = 'DATABASE_URL=postgres://admin:s3cr3tpassword@db.example.com:5432/mydb';
+    const r = detectAll(t, {});
+    expect(r.some(d => d.key === 'postgres_url')).toBeTruthy();
+  });
+
+  it('redacts Postgres password but preserves host', () => {
+    const t = 'postgres://admin:s3cr3tpassword@db.example.com/mydb';
+    const r = detectAll(t, {});
+    const s = sanitize(t, r);
+    expect(s.includes('s3cr3tpassword')).toBeFalsy();
+    expect(s.includes('db.example.com')).toBeTruthy();
+  });
+
+  it('does not flag Postgres URL without credentials', () => {
+    const t = 'postgres://db.example.com/mydb';
+    const r = detectAll(t, {});
+    expect(r.some(d => d.key === 'postgres_url')).toBeFalsy();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // PII detection
 // ---------------------------------------------------------------------------
 describe('PII detection', () => {
@@ -101,6 +170,17 @@ describe('PII detection', () => {
   it('rejects credit card with invalid Luhn', () => {
     const r = detectAll('4111 1111 1111 1112', {});
     expect(r.some(d => d.key === 'credit_card')).toBeFalsy();
+  });
+
+  it('detects a valid IBAN', () => {
+    // GB29 NWBK 6016 1331 9268 19 — real test IBAN, passes Mod-97
+    const r = detectAll('pay to GB29NWBK60161331926819', {});
+    expect(r.some(d => d.key === 'iban')).toBeTruthy();
+  });
+
+  it('rejects an IBAN with invalid checksum', () => {
+    const r = detectAll('GB00NWBK60161331926819', {});
+    expect(r.some(d => d.key === 'iban')).toBeFalsy();
   });
 });
 
