@@ -50,11 +50,8 @@ SnipGuard processes text **only in-page** using content scripts. It does not sen
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for how to add detectors, report bugs, and submit pull requests.
 
 ## Roadmap
-- Firefox and Edge builds.
-- Configurable hold-to-confirm duration.
-- Alt+Paste bypass toggle.
-- Enterprise: managed policy, bypass-with-justification, content-free audit log.
-- Shadow DOM / rich editor support improvements.
+
+See [`ROADMAP.md`](ROADMAP.md) for the full plan. Up next: Firefox/Edge builds, more secret providers (Twilio, Telegram, Anthropic, HuggingFace, Slack), and enterprise policy controls.
 
 ## License
 Apache-2.0 — see [`LICENSE`](LICENSE).
