@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/contrailrisks/snipguard/compare/v0.2.0...v0.2.1) (2026-03-09)
+
+
+### Bug Fixes
+
+* security hardening — XSS, sanitize $-injection, CSP, cache invalidation ([8439595](https://github.com/contrailrisks/snipguard/commit/8439595762bb84a8f56f73dccb55248aeba03245))
+
 ## [0.2.0](https://github.com/contrailrisks/snipguard/compare/v0.1.3...v0.2.0) (2026-03-09)
 
 
