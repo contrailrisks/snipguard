@@ -17,7 +17,9 @@
     for (const det of detections) {
       const d = window.SG_DETECTORS.list.find(x => x.name === det.key);
       const replacement = (d && d.redact) ? d.redact(det.match) : `[[REDACTED_${det.key.toUpperCase()}]]`;
-      out = out.replace(new RegExp(escapeForRx(det.match), 'g'), replacement);
+      // Use a function callback to prevent $& / $1 / $' interpretation in
+      // the replacement string (JS String.replace special $ sequences).
+      out = out.replace(new RegExp(escapeForRx(det.match), 'g'), () => replacement);
     }
     return out;
   }

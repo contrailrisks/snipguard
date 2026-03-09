@@ -52,5 +52,8 @@
   "css": ["src/ui.css"],
   "run_at": "document_start"
 }],
-  "options_page": "options.html"
+  "options_page": "options.html",
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self';"
+  }
 }

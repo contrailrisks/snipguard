@@ -3,15 +3,18 @@
   function toast({summary, detail, onProceed, onSanitize}){
     removeToast();
     const t = document.createElement('div'); t.id='sg-toast';
+    // Static structure only — no user data in innerHTML to prevent XSS.
+    // Dynamic text (summary) is set via textContent after insertion.
     t.innerHTML = `
-      <div style="font-weight:600;margin-bottom:4px">SnipGuard blocked a risky paste</div>
-      <div style="opacity:.9">${summary}</div>
+      <div id="sg-title" style="font-weight:600;margin-bottom:4px">SnipGuard blocked a risky paste</div>
+      <div id="sg-summary" style="opacity:.9"></div>
       <div id="sg-mask-preview" style="display:none"></div>
       <div style="margin-top:8px">
-        <button class="sg-btn sg-primary" id="sg-sanitize">Mask & paste</button>
-        <button class="sg-btn sg-secondary" id="sg-proceed" title="Hold Alt to bypass next time">Paste anyway</button>
+        <button class="sg-btn sg-primary" id="sg-sanitize">Mask &amp; paste</button>
+        <button class="sg-btn sg-secondary" id="sg-proceed" title="Hold to bypass">Paste anyway</button>
         <button class="sg-btn sg-danger" id="sg-cancel">Cancel</button>
       </div>`;
+    t.querySelector('#sg-summary').textContent = summary;
     document.documentElement.appendChild(t);
 
     const maskPreview = t.querySelector('#sg-mask-preview');

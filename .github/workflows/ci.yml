@@ -18,6 +18,8 @@ jobs:
 
       - run: npm ci
 
+      - run: npm audit --audit-level=moderate
+
       - run: npm test
 
       - name: Build preview zip

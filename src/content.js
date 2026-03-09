@@ -247,6 +247,11 @@ document.addEventListener('paste', sgHandlePaste, true);
 document.addEventListener('drop', sgHandleDrop, true);
 document.addEventListener('change', sgHandleFileInput, true);
 
+// Invalidate policy cache immediately when the user changes settings,
+// so the new policy takes effect on the very next paste rather than
+// waiting out the TTL.
+chrome.storage.onChanged.addListener(() => { _policyCache = null; });
+
 // Optional keyboard bypass (Alt+V) — feature-flagged when we add options
 // document.addEventListener('keydown', (e) => {
 //   if (e.altKey && (e.key === 'v' || e.key === 'V')) {
