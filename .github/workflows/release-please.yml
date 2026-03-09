@@ -12,11 +12,31 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     steps:
+      # Generate a short-lived installation token from a GitHub App.
+      # This works for org repos where the org policy blocks GITHUB_TOKEN
+      # from creating pull requests.
+      #
+      # Setup (one-time):
+      #   1. Create a GitHub App in the org:
+      #      Org Settings → Developer settings → GitHub Apps → New GitHub App
+      #      Permissions required:
+      #        Contents:       Read & write
+      #        Pull requests:  Read & write
+      #        Metadata:       Read-only  (added automatically)
+      #      Disable "Expire user authorization tokens" is fine to leave on.
+      #      Webhook: not needed — uncheck "Active".
+      #   2. Install the App on the snipguard repo only.
+      #   3. Generate a private key (App settings → "Generate a private key").
+      #   4. Add two repository secrets (snipguard → Settings → Secrets):
+      #        RELEASE_PLEASE_APP_ID          ← numeric App ID from the App page
+      #        RELEASE_PLEASE_APP_PRIVATE_KEY ← contents of the downloaded .pem file
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.RELEASE_PLEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
+
       - uses: googleapis/release-please-action@v4
         with:
-          # GITHUB_TOKEN cannot create PRs when the org policy "Allow GitHub
-          # Actions to create and approve pull requests" is disabled.
-          # Create a fine-grained PAT with Contents: write + Pull requests: write
-          # on this repo and store it as the RELEASE_PLEASE_TOKEN secret.
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
           release-type: node
