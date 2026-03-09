@@ -1,0 +1,13 @@
+# Changelog
+
+## [0.2.0](https://github.com/contrailrisks/snipguard/compare/v0.1.3...v0.2.0) (2026-03-09)
+
+
+### Features
+
+* provider pack — Azure, Discord, Firebase, Cloudflare, Postgres ([#9](https://github.com/contrailrisks/snipguard/issues/9)) ([96b444a](https://github.com/contrailrisks/snipguard/commit/96b444ab761b6be89f6bfbbea9b4cc648eb4b48d))
+
+
+### Bug Fixes
+
+* reliability improvements across detectors, tests, and content script ([b9082dc](https://github.com/contrailrisks/snipguard/commit/b9082dce6d579a7faa2aca4e3edb80ed4bb1dacf))
