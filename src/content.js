@@ -16,7 +16,14 @@ const SG_TARGETS = [
 function sgIsTarget() { return SG_TARGETS.some(r => r.test(location.hostname)); }
 
 /***** Policy loader (user sync + optional managed merge) *****/
+let _policyCache = null;
+let _policyCacheTs = 0;
+const POLICY_TTL_MS = 5000;
+
 async function sgGetPolicy() {
+  const now = Date.now();
+  if (_policyCache && now - _policyCacheTs < POLICY_TTL_MS) return _policyCache;
+
   // NOTE: managed policy merge will override user values when that feature lands.
   const defaults = {
     allowlist: [],
@@ -27,15 +34,20 @@ async function sgGetPolicy() {
   };
   const user = await chrome.storage.sync.get(defaults);
   // If chrome.storage.managed is available, merge it (admin overrides).
+  let policy;
   try {
     // Not all channels expose storage.managed; swallow errors.
     const managed = (chrome.storage && chrome.storage.managed)
       ? await chrome.storage.managed.get({})
       : {};
-    return Object.assign({}, defaults, user, managed);
+    policy = Object.assign({}, defaults, user, managed);
   } catch {
-    return Object.assign({}, defaults, user);
+    policy = Object.assign({}, defaults, user);
   }
+
+  _policyCache = policy;
+  _policyCacheTs = now;
+  return policy;
 }
 
 /***** Active element & insertion helpers (inputs, CE, shadow DOM) *****/
@@ -94,7 +106,11 @@ function sgSummarizeDetections(detections) {
     pii: detections.filter(d => d.type === 'pii').length,
     code: detections.filter(d => d.type === 'code').length
   };
-  const summary = `Found ${counts.api} API key(s), ${counts.pii} PII hit(s), ${counts.code} code indicator(s). Click title to preview sanitized output.`;
+  const parts = [];
+  if (counts.api)  parts.push(`${counts.api} API key${counts.api  > 1 ? 's' : ''}`);
+  if (counts.pii)  parts.push(`${counts.pii} PII item${counts.pii  > 1 ? 's' : ''}`);
+  if (counts.code) parts.push(`${counts.code} code block${counts.code > 1 ? 's' : ''}`);
+  const summary = `Detected: ${parts.join(', ')}. Click title to preview sanitized output.`;
   return { counts, summary };
 }
 
@@ -129,10 +145,12 @@ async function sgHandlePaste(e) {
   // Run detectors
   const recent = sgAccumulateRecent(clipboardText);
   const detections = window.SG.detectAll(clipboardText, { orgMarkers: policy.orgMarkers });
-  // If single paste looks clean, also check recent buffer for chunked secrets
-  const combinedDetections = detections.length ? detections : window.SG.detectAll(recent, { orgMarkers: policy.orgMarkers });
+  // If single paste looks clean, also check recent buffer for chunked secrets.
+  // Use buffer detections only to determine risk — sanitize always uses detections
+  // from the current paste so indices and match strings remain consistent.
+  const bufferDetections = detections.length ? detections : window.SG.detectAll(recent, { orgMarkers: policy.orgMarkers });
 
-  const { counts, summary } = sgSummarizeDetections(combinedDetections);
+  const { counts, summary } = sgSummarizeDetections(bufferDetections);
 
   const hasRisk =
     (policy.blockOn.api && counts.api) ||
@@ -145,7 +163,8 @@ async function sgHandlePaste(e) {
   e.stopPropagation(); e.preventDefault();
 
   const el = sgActiveEditable();
-  const sanitized = window.SG.sanitize(clipboardText, combinedDetections);
+  // Always sanitize against the current paste text using its own detections.
+  const sanitized = window.SG.sanitize(clipboardText, detections);
 
   if (hostMode === 'ignore') {
     sgInsertText(el, clipboardText);
