@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/contrailrisks/snipguard/compare/v0.3.0...v0.4.0) (2026-03-09)
+
+
+### Features
+
+* Alt+V bypass, rich editor support, Firefox/Edge compatibility ([f30144f](https://github.com/contrailrisks/snipguard/commit/f30144fb7de9ab66aba0fc89a100999e3ee69f7e))
+
 ## [0.3.0](https://github.com/contrailrisks/snipguard/compare/v0.2.1...v0.3.0) (2026-03-09)
 
 
