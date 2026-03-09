@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/contrailrisks/snipguard/compare/v0.2.1...v0.3.0) (2026-03-09)
+
+
+### Features
+
+* shape-preserving redaction, configurable hold duration, per-site presets ([ffac91c](https://github.com/contrailrisks/snipguard/commit/ffac91c330ac0e1ea7a31aea9197cb40277c5874))
+
 ## [0.2.1](https://github.com/contrailrisks/snipguard/compare/v0.2.0...v0.2.1) (2026-03-09)
 
 
