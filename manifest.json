@@ -24,9 +24,16 @@
     "default_title": "SnipGuard",
     "default_popup": "options.html"
   },
+"browser_specific_settings": {
+  "gecko": {
+    "id": "snipguard@contrailrisks",
+    "strict_min_version": "121.0"
+  }
+},
 "content_scripts": [{
   "matches": ["https://*/*", "http://*/*"],
   "js": [
+    "lib/browser-polyfill.min.js",
     "src/detectors/types.js",
     "src/detectors/core.js",
     "src/detectors/secrets/openai.js",

@@ -1,0 +1,8 @@
+node_modules/
+lib/
+dist/
+*.zip
+*.sha256
+*.sig
+*.pem
+*.sbom.spdx.json

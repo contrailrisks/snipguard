@@ -30,7 +30,7 @@ async function sgGetPolicy() {
     blockOn: { api: true, pii: true, code: true },
     orgMarkers: [],
     modeByHost: {},               // host -> "block" | "warn" | "ignore"
-    bypass: { allowed: true, holdMs: 1200, requireReason: false }
+    bypass: { allowed: true, holdMs: 1200, requireReason: false, altPaste: false }
   };
   const user = await chrome.storage.sync.get(defaults);
   // If chrome.storage.managed is available, merge it (admin overrides).
@@ -52,9 +52,8 @@ async function sgGetPolicy() {
 
 /***** Active element & insertion helpers (inputs, CE, shadow DOM) *****/
 function sgActiveEditable() {
-  // Try current focus
+  // Traverse active element through open shadow roots (handles nested shadow DOM)
   let el = document.activeElement;
-  // Traverse into open shadow roots if focus is inside one
   try {
     while (el && el.shadowRoot && el.shadowRoot.activeElement) {
       el = el.shadowRoot.activeElement;
@@ -62,28 +61,43 @@ function sgActiveEditable() {
   } catch (_) {}
   if (!el) return null;
 
-  // input/textarea
+  // Plain input / textarea
   if (/^(textarea|input)$/i.test(el.tagName) && !el.readOnly && !el.disabled) return el;
 
-  // contentEditable
+  // ContentEditable (ProseMirror, Quill, Tiptap, CodeMirror 6, etc.)
   if (el.isContentEditable) return el;
 
-  // Search common editors by attribute if nothing focused (rare)
-  const fallback = document.querySelector('[contenteditable=""],[contenteditable="true"],textarea,input[type="text"]');
+  // ARIA textbox (some rich editors mark the root with role="textbox")
+  if (el.getAttribute?.('role') === 'textbox') return el;
+
+  // Monaco editor: its .inputarea textarea receives clipboard events but its
+  // value is managed internally — fall through to the execCommand path below.
+  const monacoInput = document.querySelector('.monaco-editor .inputarea');
+  if (monacoInput && !monacoInput.readOnly && !monacoInput.disabled) return monacoInput;
+
+  // Generic fallback: first visible editable element in the document
+  const fallback = document.querySelector(
+    '[contenteditable=""],[contenteditable="true"],[role="textbox"],textarea,input[type="text"]'
+  );
   return fallback || null;
 }
 
 function sgInsertText(el, txt) {
   if (!el) return;
-  if (el.isContentEditable) {
-    // Use execCommand for broad CE support (Monaco/ProseMirror often listen to input)
+
+  // Monaco's .inputarea is a <textarea> but its content is model-driven.
+  // execCommand('insertText') is the only reliable way to feed text into it.
+  const isMonaco = !!el.closest?.('.monaco-editor');
+
+  if (el.isContentEditable || isMonaco || el.getAttribute?.('role') === 'textbox') {
     el.focus();
+    // execCommand works for ProseMirror, Quill, Tiptap, CodeMirror 6, and Monaco.
     document.execCommand('insertText', false, txt);
-    // Fire an input event for frameworks that rely on it
-    el.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    el.dispatchEvent(new InputEvent('input', { bubbles: true, data: txt }));
     return;
   }
   if (/^(textarea|input)$/i.test(el.tagName)) {
+    // Standard textarea / input: direct value manipulation
     const start = el.selectionStart ?? el.value.length;
     const end = el.selectionEnd ?? el.value.length;
     const before = el.value.slice(0, start), after = el.value.slice(end);
@@ -92,11 +106,10 @@ function sgInsertText(el, txt) {
     el.selectionStart = el.selectionEnd = start + txt.length;
     return;
   }
-  // Fallback: append to body (unlikely)
-  const ta = document.createElement('textarea');
-  ta.value = txt;
-  document.body.appendChild(ta);
-  ta.select();
+  // Last resort: synthesise a clipboard event targeted at the active element
+  const dt = new DataTransfer();
+  dt.setData('text/plain', txt);
+  (el || document.body).dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true }));
 }
 
 /***** Risk evaluation & summary *****/
@@ -127,10 +140,28 @@ function sgAccumulateRecent(text) {
   return SG_RECENT.buf;
 }
 
+/***** Alt+V one-shot bypass *****/
+let _altBypassArmed = false;
+let _altBypassTimer = null;
+
+function sgArmAltBypass() {
+  _altBypassArmed = true;
+  clearTimeout(_altBypassTimer);
+  // Expire after 5 s if no paste follows
+  _altBypassTimer = setTimeout(() => { _altBypassArmed = false; }, 5000);
+}
+
 /***** Main paste handler *****/
 async function sgHandlePaste(e) {
   const clipboardText = (e.clipboardData || window.clipboardData)?.getData('text') || '';
   if (!clipboardText) return;
+
+  // Alt+V bypass: consume the flag and allow this paste through unchanged
+  if (_altBypassArmed) {
+    _altBypassArmed = false;
+    clearTimeout(_altBypassTimer);
+    return;
+  }
 
   const policy = await sgGetPolicy();
   const host = location.hostname;
@@ -254,9 +285,9 @@ document.addEventListener('change', sgHandleFileInput, true);
 // waiting out the TTL.
 chrome.storage.onChanged.addListener(() => { _policyCache = null; });
 
-// Optional keyboard bypass (Alt+V) — feature-flagged when we add options
-// document.addEventListener('keydown', (e) => {
-//   if (e.altKey && (e.key === 'v' || e.key === 'V')) {
-//     // set a short-lived "bypass once" flag if policy allows
-//   }
-// }, true);
+// Alt+V one-shot bypass — only active when bypass.altPaste is enabled in policy.
+document.addEventListener('keydown', async (e) => {
+  if (!e.altKey || (e.key !== 'v' && e.key !== 'V')) return;
+  const policy = await sgGetPolicy();
+  if (policy.bypass?.altPaste) sgArmAltBypass();
+}, true);

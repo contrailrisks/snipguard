@@ -6,9 +6,12 @@
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
+    "prepare": "node ./tools/copy-polyfill.mjs",
     "test": "node --version && npm run test:unit",
     "test:unit": "node ./tools/run-jest.mjs",
     "build": "node ./tools/pack.mjs"
   },
-  "devDependencies": {}
+  "dependencies": {
+    "webextension-polyfill": "^0.12.0"
+  }
 }

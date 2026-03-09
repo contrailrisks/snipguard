@@ -47,6 +47,7 @@ async function load(){
   const holdMs = p.bypass?.holdMs ?? 1200;
   document.getElementById('holdMs').value = holdMs;
   document.getElementById('holdMs-label').textContent = holdMs;
+  document.getElementById('altPaste').checked = p.bypass?.altPaste ?? false;
 }
 
 async function save(){
@@ -63,7 +64,8 @@ async function save(){
     if (h && rest.length) modeByHost[h.trim()] = rest.join(':').trim();
   });
   const holdMs = Number(document.getElementById('holdMs').value);
-  const bypass = { allowed: true, holdMs, requireReason: false };
+  const altPaste = document.getElementById('altPaste').checked;
+  const bypass = { allowed: true, holdMs, requireReason: false, altPaste };
   await chrome.storage.sync.set({ blockOn, allowlist, orgMarkers, modeByHost, bypass });
   const s = document.getElementById('status'); s.textContent = 'Saved ✔'; setTimeout(()=> s.textContent='', 1200);
 }
