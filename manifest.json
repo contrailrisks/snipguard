@@ -44,6 +44,7 @@
     "src/detectors/pii/iban.js",
     "src/detectors/code/heuristic.js",
     "src/detectors/code/org-markers.js",
+    "src/detectors/secrets/high-entropy.js",
     "src/detectors/index.js",
     "src/ui.js",
     "src/content.js"

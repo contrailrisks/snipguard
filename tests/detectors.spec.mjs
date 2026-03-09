@@ -28,6 +28,7 @@ const detectorFiles = [
   'pii/iban.js',
   'code/heuristic.js',
   'code/org-markers.js',
+  'secrets/high-entropy.js',
   'index.js',
 ];
 
