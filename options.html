@@ -9,8 +9,10 @@
     fieldset { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 16px; }
     label { display:block; margin: 6px 0; }
     input[type=text] { width: 100%; padding: 6px 8px; }
+    input[type=range] { width: 100%; }
     textarea { width: 100%; height: 90px; }
     button { padding: 8px 12px; border-radius: 8px; border: 0; background: #111827; color: #fff; cursor: pointer; }
+    .preset-btn { background: #374151; font-size: 13px; margin: 2px 2px 2px 0; }
   </style>
 </head>
 <body>
@@ -32,8 +34,20 @@ localhost"></textarea>
 internal-repo-name"></textarea>
   </fieldset>
   <fieldset>
+    <legend>Hold-to-confirm duration</legend>
+    <label>
+      Hold <strong id="holdMs-label">1200</strong> ms before "Paste anyway" unlocks
+      <input type="range" id="holdMs" min="600" max="2000" step="100" value="1200">
+    </label>
+  </fieldset>
+  <fieldset>
     <legend>Per-site mode (host: mode)</legend>
     <p>Modes: <code>block</code>, <code>warn</code>, <code>ignore</code>. Example: <code>chat.openai.com: block</code></p>
+    <p>Presets:
+      <button class="preset-btn" id="preset-ai">Public AI (block)</button>
+      <button class="preset-btn" id="preset-docs">Docs/search (warn)</button>
+      <button class="preset-btn" id="preset-dev">Dev/local (ignore)</button>
+    </p>
     <textarea id="modeByHost" placeholder="chat.openai.com: block
 localhost: ignore"></textarea>
   </fieldset>

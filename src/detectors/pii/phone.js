@@ -11,7 +11,16 @@
         out.push({ type: 'pii', key: 'phone', match: m[0], index: m.index ?? 0, severity: 'low' });
       return out;
     },
-    redact() { return '[[REDACTED_PHONE]]'; }
+    redact(match) {
+      if (match.startsWith('+')) {
+        // E.164: preserve country code (+1, +44, +351 etc.)
+        const cc = match.match(/^\+\d{1,3}/)?.[0] || '+';
+        return cc + '[REDACTED]';
+      }
+      // Formatted NA-style: (555) 123-4567 → (555)[REDACTED]
+      const area = match.match(/^\(?\d{3}\)?/)?.[0] || '';
+      return area + '[REDACTED]';
+    }
   };
   window.SG_DETECTORS.register(det);
 })();

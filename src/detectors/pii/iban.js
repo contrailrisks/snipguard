@@ -13,7 +13,10 @@
       }
       return out;
     },
-    redact() { return '[[REDACTED_IBAN]]'; }
+    redact(match) {
+      // Preserve country code + check digits (4 chars) for auditability.
+      return match.slice(0, 4) + '[REDACTED]';
+    }
   };
   window.SG_DETECTORS.register(det);
 })();

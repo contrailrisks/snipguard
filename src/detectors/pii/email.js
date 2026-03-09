@@ -9,7 +9,11 @@
         out.push({ type: 'pii', key: 'email', match: m[0], index: m.index ?? 0, severity: 'medium' });
       return out;
     },
-    redact() { return '[[REDACTED_EMAIL]]'; }
+    redact(match) {
+      // Preserve domain so context is retained; hide local part for privacy.
+      const at = match.indexOf('@');
+      return '[REDACTED]' + (at > -1 ? match.slice(at) : '@[REDACTED]');
+    }
   };
   window.SG_DETECTORS.register(det);
 })();

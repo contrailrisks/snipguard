@@ -1,6 +1,6 @@
 (function(){
   function removeToast(){ const el = document.getElementById('sg-toast'); if (el) el.remove(); }
-  function toast({summary, detail, onProceed, onSanitize}){
+  function toast({summary, detail, onProceed, onSanitize, holdMs = 1200}){
     removeToast();
     const t = document.createElement('div'); t.id='sg-toast';
     // Static structure only — no user data in innerHTML to prevent XSS.
@@ -27,7 +27,7 @@
     proceedBtn.textContent = 'Hold to confirm';
     proceedBtn.onmousedown = () => {
       proceedBtn.textContent = 'Hold...';
-      holdTimer = setTimeout(() => { armed = true; proceedBtn.disabled = false; proceedBtn.textContent = 'Paste anyway'; }, 1200);
+      holdTimer = setTimeout(() => { armed = true; proceedBtn.disabled = false; proceedBtn.textContent = 'Paste anyway'; }, holdMs);
     };
     proceedBtn.onmouseup = proceedBtn.onmouseleave = () => { if (holdTimer) clearTimeout(holdTimer); if (!armed){ proceedBtn.disabled = true; proceedBtn.textContent = 'Hold to confirm'; } };
     proceedBtn.onclick = () => { if (!armed) return; onProceed && onProceed(); removeToast(); };

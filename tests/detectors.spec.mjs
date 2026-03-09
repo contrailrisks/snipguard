@@ -229,4 +229,39 @@ describe('Sanitization', () => {
     expect(s.includes('a@b.co')).toBeFalsy();
     expect(s.includes('sk-ABCDEFGHIJKLMNOPQRST123456')).toBeFalsy();
   });
+
+  it('email redaction preserves domain', () => {
+    const t = 'contact alice@example.com for help';
+    const r = detectAll(t, {});
+    const s = sanitize(t, r);
+    expect(s.includes('alice')).toBeFalsy();
+    expect(s.includes('@example.com')).toBeTruthy();
+  });
+
+  it('IBAN redaction preserves country code and check digits', () => {
+    const t = 'send to GB29NWBK60161331926819';
+    const r = detectAll(t, {});
+    const s = sanitize(t, r);
+    expect(s.includes('GB29NWBK60161331926819')).toBeFalsy();
+    expect(s.includes('GB29')).toBeTruthy();
+  });
+
+  it('phone redaction preserves E.164 country code', () => {
+    const t = 'call +14155552671 now';
+    const r = detectAll(t, {});
+    const s = sanitize(t, r);
+    expect(s.includes('+14155552671')).toBeFalsy();
+    expect(s.includes('+1')).toBeTruthy();
+  });
+
+  it('Discord token redaction preserves user-id segment', () => {
+    // Format: [MNO] + 23 alphanum . 6 alphanum . 27 alphanum
+    const userSegment = 'M' + 'A'.repeat(23);
+    const token = userSegment + '.' + 'B'.repeat(6) + '.' + 'C'.repeat(27);
+    const t = `token: ${token}`;
+    const r = detectAll(t, {});
+    const s = sanitize(t, r);
+    expect(s.includes(token)).toBeFalsy();
+    expect(s.includes(userSegment)).toBeTruthy();
+  });
 });

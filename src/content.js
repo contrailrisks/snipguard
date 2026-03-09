@@ -175,6 +175,7 @@ async function sgHandlePaste(e) {
   window.SG_UI.toast({
     summary,
     detail: sanitized,
+    holdMs: policy.bypass?.holdMs ?? 1200,
     onSanitize: () => sgInsertText(el, sanitized),
     onProceed: () => sgInsertText(el, clipboardText)
   });
@@ -210,6 +211,7 @@ async function sgHandleDrop(e) {
   window.SG_UI.toast({
     summary: `File "${name}" flagged: ${counts.api} API, ${counts.pii} PII, ${counts.code} code.`,
     detail: sanitized,
+    holdMs: policy.bypass?.holdMs ?? 1200,
     onSanitize: () => sgInsertText(el, sanitized),
     onProceed: () => sgInsertText(el, text)
   });

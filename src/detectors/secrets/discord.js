@@ -10,7 +10,11 @@
         out.push({ type: 'api', key: 'discord', match: m[0], index: m.index ?? 0, severity: 'high' });
       return out;
     },
-    redact() { return '[REDACTED_DISCORD_TOKEN]'; }
+    redact(match) {
+      // Preserve the user-id segment (before the first dot); redact the rest.
+      const dot = match.indexOf('.');
+      return (dot > -1 ? match.slice(0, dot) : match.slice(0, 8)) + '.[REDACTED]';
+    }
   };
   window.SG_DETECTORS.register(det);
 })();
