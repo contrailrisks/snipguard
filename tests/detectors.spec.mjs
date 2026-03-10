@@ -18,10 +18,21 @@ const detectorFiles = [
   'secrets/aws.js',
   'secrets/stripe.js',
   'secrets/azure.js',
+  'secrets/azure-sql.js',
+  'secrets/azure-client-secret.js',
   'secrets/discord.js',
   'secrets/firebase.js',
+  'secrets/google-oauth.js',
   'secrets/cloudflare.js',
   'secrets/postgres.js',
+  'secrets/pem.js',
+  'secrets/anthropic.js',
+  'secrets/huggingface.js',
+  'secrets/slack.js',
+  'secrets/twilio.js',
+  'secrets/telegram.js',
+  'secrets/npm-token.js',
+  'secrets/sendgrid.js',
   'pii/email.js',
   'pii/phone.js',
   'pii/credit-card.js',
@@ -263,5 +274,130 @@ describe('Sanitization', () => {
     const s = sanitize(t, r);
     expect(s.includes(token)).toBeFalsy();
     expect(s.includes(userSegment)).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Provider pack 2 — PR #18 extractions + #23 new providers
+// ---------------------------------------------------------------------------
+describe('Provider pack 2 detection', () => {
+  // --- PR #18 extractions ---
+
+  it('detects Azure SQL connection string', () => {
+    const t = 'Server=tcp:myserver.database.windows.net,1433;Database=mydb;User ID=admin;Password=s3cr3t!;';
+    const r = detectAll(t, {});
+    expect(r.some(d => d.key === 'azure_sql')).toBeTruthy();
+  });
+
+  it('Azure SQL redaction preserves everything except Password value', () => {
+    const t = 'Server=tcp:myserver.database.windows.net,1433;Database=mydb;User ID=admin;Password=s3cr3t!;';
+    const r = detectAll(t, {});
+    const s = sanitize(t, r);
+    expect(s.includes('s3cr3t!')).toBeFalsy();
+    expect(s.includes('Password=[REDACTED]')).toBeTruthy();
+    expect(s.includes('mydb')).toBeTruthy();
+  });
+
+  it('detects Azure client secret via env var', () => {
+    const t = 'AZURE_CLIENT_SECRET=' + 'a'.repeat(16);
+    const r = detectAll(t, {});
+    expect(r.some(d => d.key === 'azure_client_secret')).toBeTruthy();
+  });
+
+  it('detects Google OAuth ya29 token', () => {
+    const t = 'ya29.' + 'A'.repeat(20);
+    const r = detectAll(t, {});
+    expect(r.some(d => d.key === 'google_oauth')).toBeTruthy();
+  });
+
+  it('Google OAuth redaction replaces token with placeholder', () => {
+    const t = 'Bearer ya29.' + 'A'.repeat(25);
+    const r = detectAll(t, {});
+    const s = sanitize(t, r);
+    expect(s.includes('ya29.' + 'A'.repeat(25))).toBeFalsy();
+    expect(s.includes('ya29.[REDACTED]')).toBeTruthy();
+  });
+
+  it('detects PEM private key block', () => {
+    const body = 'A'.repeat(60);
+    const t = `-----BEGIN PRIVATE KEY-----\n${body}\n-----END PRIVATE KEY-----`;
+    const r = detectAll(t, {});
+    expect(r.some(d => d.key === 'pem_private_key')).toBeTruthy();
+  });
+
+  it('PEM redaction removes key body but preserves header/footer', () => {
+    const body = 'A'.repeat(60);
+    const t = `-----BEGIN RSA PRIVATE KEY-----\n${body}\n-----END RSA PRIVATE KEY-----`;
+    const r = detectAll(t, {});
+    const s = sanitize(t, r);
+    expect(s.includes(body)).toBeFalsy();
+    expect(s.includes('-----BEGIN RSA PRIVATE KEY-----')).toBeTruthy();
+    expect(s.includes('-----END RSA PRIVATE KEY-----')).toBeTruthy();
+  });
+
+  // --- #23 Provider pack 2 ---
+
+  it('detects Anthropic API key', () => {
+    const t = 'sk-ant-api03-' + 'A'.repeat(40);
+    const r = detectAll(t, {});
+    expect(r.some(d => d.key === 'anthropic')).toBeTruthy();
+  });
+
+  it('Anthropic key redaction preserves sk-ant- prefix', () => {
+    const t = 'sk-ant-api03-' + 'A'.repeat(40);
+    const r = detectAll(t, {});
+    const s = sanitize(t, r);
+    expect(s.includes('A'.repeat(40))).toBeFalsy();
+    expect(s.includes('sk-ant-')).toBeTruthy();
+  });
+
+  it('detects HuggingFace token', () => {
+    const t = 'hf_' + 'A'.repeat(34);
+    const r = detectAll(t, {});
+    expect(r.some(d => d.key === 'huggingface')).toBeTruthy();
+  });
+
+  it('detects Slack bot token', () => {
+    const t = 'xoxb-123456789-abcdefghij';
+    const r = detectAll(t, {});
+    expect(r.some(d => d.key === 'slack_token')).toBeTruthy();
+  });
+
+  it('detects Slack webhook URL', () => {
+    const t = 'https://hooks.slack.com/services/T01ABCDEF/B01ABCDEF/ABCDEFabcdef123456';
+    const r = detectAll(t, {});
+    expect(r.some(d => d.key === 'slack_webhook')).toBeTruthy();
+  });
+
+  it('detects Twilio API key', () => {
+    const t = 'SK' + 'a'.repeat(32);
+    const r = detectAll(t, {});
+    expect(r.some(d => d.key === 'twilio')).toBeTruthy();
+  });
+
+  it('detects Telegram bot token', () => {
+    const t = '123456789:' + 'A'.repeat(35);
+    const r = detectAll(t, {});
+    expect(r.some(d => d.key === 'telegram_bot')).toBeTruthy();
+  });
+
+  it('Telegram token redaction preserves bot ID', () => {
+    const t = '123456789:' + 'A'.repeat(35);
+    const r = detectAll(t, {});
+    const s = sanitize(t, r);
+    expect(s.includes('A'.repeat(35))).toBeFalsy();
+    expect(s.includes('123456789')).toBeTruthy();
+  });
+
+  it('detects npm token', () => {
+    const t = 'npm_' + 'A'.repeat(36);
+    const r = detectAll(t, {});
+    expect(r.some(d => d.key === 'npm_token')).toBeTruthy();
+  });
+
+  it('detects SendGrid API key', () => {
+    const t = 'SG.' + 'A'.repeat(22) + '.' + 'B'.repeat(43);
+    const r = detectAll(t, {});
+    expect(r.some(d => d.key === 'sendgrid')).toBeTruthy();
   });
 });

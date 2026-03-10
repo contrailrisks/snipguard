@@ -8,35 +8,53 @@
     h1 { font-size: 20px; }
     fieldset { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 16px; }
     label { display:block; margin: 6px 0; }
-    input[type=text] { width: 100%; padding: 6px 8px; }
+    input[type=text] { width: 100%; padding: 6px 8px; box-sizing: border-box; }
     input[type=range] { width: 100%; }
-    textarea { width: 100%; height: 90px; }
+    textarea { width: 100%; height: 90px; box-sizing: border-box; }
     button { padding: 8px 12px; border-radius: 8px; border: 0; background: #111827; color: #fff; cursor: pointer; }
     .preset-btn { background: #374151; font-size: 13px; margin: 2px 2px 2px 0; }
+    .danger-btn { background: #dc2626; font-size: 12px; padding: 4px 8px; }
+    /* Custom patterns table */
+    #cp-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    #cp-table th { text-align: left; padding: 4px 6px; border-bottom: 1px solid #e5e7eb; color: #6b7280; }
+    #cp-table td { padding: 4px 6px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+    #cp-table code { background: #f3f4f6; padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+    /* Playground */
+    #playground { height: 100px; font-family: ui-monospace, monospace; font-size: 13px; }
+    #playground-results { font-size: 13px; }
+    .pg-hit { margin: 4px 0; padding: 4px 8px; border-radius: 4px; background: #fef3c7; border-left: 3px solid #f59e0b; }
+    .pg-hit.high { background: #fee2e2; border-left-color: #ef4444; }
+    .pg-hit.medium { background: #fef3c7; border-left-color: #f59e0b; }
+    .pg-hit.low { background: #ecfdf5; border-left-color: #10b981; }
+    .pg-clean { color: #10b981; font-weight: 600; }
+    .cp-error { color: #ef4444; font-size: 12px; margin-top: 4px; }
   </style>
 </head>
 <body>
   <h1>SnipGuard — Settings</h1>
+
   <fieldset>
     <legend>Blocking</legend>
     <label><input type="checkbox" id="api"> Block on API keys</label>
     <label><input type="checkbox" id="pii"> Block on PII</label>
     <label><input type="checkbox" id="code"> Block on proprietary code</label>
   </fieldset>
+
   <fieldset>
     <legend>Allowlist domains (one per line)</legend>
-    <textarea id="allowlist" placeholder="internal.company.com
-localhost"></textarea>
+    <textarea id="allowlist" placeholder="internal.company.com&#10;localhost"></textarea>
   </fieldset>
+
   <fieldset>
     <legend>Org markers (strings that flag proprietary content)</legend>
-    <textarea id="orgMarkers" placeholder="contrailrisks.com
-internal-repo-name"></textarea>
+    <textarea id="orgMarkers" placeholder="contrailrisks.com&#10;internal-repo-name"></textarea>
   </fieldset>
+
   <fieldset>
     <legend>Bypass</legend>
     <label><input type="checkbox" id="altPaste"> Allow Alt+V to bypass SnipGuard once (off by default)</label>
   </fieldset>
+
   <fieldset>
     <legend>Hold-to-confirm duration</legend>
     <label>
@@ -44,6 +62,7 @@ internal-repo-name"></textarea>
       <input type="range" id="holdMs" min="600" max="2000" step="100" value="1200">
     </label>
   </fieldset>
+
   <fieldset>
     <legend>Per-site mode (host: mode)</legend>
     <p>Modes: <code>block</code>, <code>warn</code>, <code>ignore</code>. Example: <code>chat.openai.com: block</code></p>
@@ -52,11 +71,72 @@ internal-repo-name"></textarea>
       <button class="preset-btn" id="preset-docs">Docs/search (warn)</button>
       <button class="preset-btn" id="preset-dev">Dev/local (ignore)</button>
     </p>
-    <textarea id="modeByHost" placeholder="chat.openai.com: block
-localhost: ignore"></textarea>
+    <textarea id="modeByHost" placeholder="chat.openai.com: block&#10;localhost: ignore"></textarea>
   </fieldset>
+
+  <!-- Custom patterns (#27) -->
+  <fieldset>
+    <legend>Custom detection patterns</legend>
+    <p id="cp-empty" style="color:#6b7280;font-size:13px;margin:0 0 8px;">No custom patterns yet.</p>
+    <table id="cp-table" style="display:none">
+      <thead><tr><th>Name</th><th>Regex</th><th>Redact prefix</th><th>On</th><th></th></tr></thead>
+      <tbody id="cp-body"></tbody>
+    </table>
+    <details style="margin-top:10px">
+      <summary style="cursor:pointer;font-size:13px;color:#374151">Add pattern…</summary>
+      <div style="margin-top:8px;display:grid;gap:6px">
+        <input type="text" id="cp-name" placeholder="Name (e.g. my_api_key)">
+        <input type="text" id="cp-regex" placeholder="Regex (e.g. myco_[A-Za-z0-9]{32})">
+        <input type="text" id="cp-prefix" placeholder="Redact prefix — optional (e.g. myco_[REDACTED])">
+        <p id="cp-error" class="cp-error" style="display:none"></p>
+        <button id="cp-add" style="width:fit-content">Add pattern</button>
+      </div>
+    </details>
+  </fieldset>
+
   <button id="save">Save settings</button>
   <span id="status" style="margin-left:8px;"></span>
+
+  <!-- Detection playground (#24) -->
+  <fieldset style="margin-top:24px">
+    <legend>Detection playground</legend>
+    <p style="font-size:13px;margin:0 0 6px">Paste sample text to preview what SnipGuard would detect — nothing leaves the browser.</p>
+    <textarea id="playground" placeholder="Paste text here to test…"></textarea>
+    <div id="playground-results" style="margin-top:8px"></div>
+  </fieldset>
+
+  <!-- Detector scripts (needed for playground) -->
+  <script src="lib/browser-polyfill.min.js"></script>
+  <script src="src/detectors/types.js"></script>
+  <script src="src/detectors/core.js"></script>
+  <script src="src/detectors/secrets/openai.js"></script>
+  <script src="src/detectors/secrets/github.js"></script>
+  <script src="src/detectors/secrets/aws.js"></script>
+  <script src="src/detectors/secrets/stripe.js"></script>
+  <script src="src/detectors/secrets/azure.js"></script>
+  <script src="src/detectors/secrets/azure-sql.js"></script>
+  <script src="src/detectors/secrets/azure-client-secret.js"></script>
+  <script src="src/detectors/secrets/discord.js"></script>
+  <script src="src/detectors/secrets/firebase.js"></script>
+  <script src="src/detectors/secrets/google-oauth.js"></script>
+  <script src="src/detectors/secrets/cloudflare.js"></script>
+  <script src="src/detectors/secrets/postgres.js"></script>
+  <script src="src/detectors/secrets/pem.js"></script>
+  <script src="src/detectors/secrets/anthropic.js"></script>
+  <script src="src/detectors/secrets/huggingface.js"></script>
+  <script src="src/detectors/secrets/slack.js"></script>
+  <script src="src/detectors/secrets/twilio.js"></script>
+  <script src="src/detectors/secrets/telegram.js"></script>
+  <script src="src/detectors/secrets/npm-token.js"></script>
+  <script src="src/detectors/secrets/sendgrid.js"></script>
+  <script src="src/detectors/secrets/high-entropy.js"></script>
+  <script src="src/detectors/pii/email.js"></script>
+  <script src="src/detectors/pii/phone.js"></script>
+  <script src="src/detectors/pii/credit-card.js"></script>
+  <script src="src/detectors/pii/iban.js"></script>
+  <script src="src/detectors/code/heuristic.js"></script>
+  <script src="src/detectors/code/org-markers.js"></script>
+  <script src="src/detectors/index.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

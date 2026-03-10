@@ -7,4 +7,8 @@
  */
 
 // shared namespace
-window.SG_DETECTORS = window.SG_DETECTORS || { list: [], register(d){ this.list.push(d); } };
+window.SG_DETECTORS = window.SG_DETECTORS || {
+  list: [],
+  register(d)      { this.list.push(d); },
+  unregister(name) { this.list = this.list.filter(d => d.name !== name); }
+};

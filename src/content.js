@@ -6,12 +6,25 @@
 
 /***** Site targeting (light heuristic; policy can override) *****/
 const SG_TARGETS = [
+  // Original 6
   /chat\.openai\.com/,
   /claude\.ai/,
   /gemini\.google\.com|bard\.google\.com/,
   /copilot\.microsoft\.com/,
   /perplexity\.ai/,
-  /poe\.com/
+  /poe\.com/,
+  // Expanded (#26)
+  /chat\.mistral\.ai/,
+  /groq\.com/,
+  /together\.ai/,
+  /coral\.cohere\.com/,
+  /replicate\.com/,
+  /huggingface\.co/,
+  /aistudio\.google\.com/,
+  /phind\.com/,
+  /kagi\.com/,
+  /grok\.com/,
+  /x\.com/
 ];
 function sgIsTarget() { return SG_TARGETS.some(r => r.test(location.hostname)); }
 
@@ -190,6 +203,9 @@ async function sgHandlePaste(e) {
 
   if (!hasRisk) return;
 
+  // Notify service worker so it can increment the badge counter (#25)
+  chrome.runtime.sendMessage({ type: ‘SG_INTERCEPT’ }).catch(() => {});
+
   // Intercept the paste; we’ll decide what to insert
   e.stopPropagation(); e.preventDefault();
 
@@ -283,7 +299,39 @@ document.addEventListener('change', sgHandleFileInput, true);
 // Invalidate policy cache immediately when the user changes settings,
 // so the new policy takes effect on the very next paste rather than
 // waiting out the TTL.
-chrome.storage.onChanged.addListener(() => { _policyCache = null; });
+chrome.storage.onChanged.addListener((changes) => {
+  _policyCache = null;
+  if (changes.customPatterns) sgLoadCustomPatterns();
+});
+
+/***** Custom user-defined patterns (#27) *****/
+function sgLoadCustomPatterns() {
+  chrome.storage.sync.get({ customPatterns: [] }).then(({ customPatterns }) => {
+    // Remove previously-registered custom detectors before re-registering.
+    const current = window.SG_DETECTORS.list.map(d => d.name).filter(n => n.startsWith('custom_'));
+    current.forEach(n => window.SG_DETECTORS.unregister(n));
+    // Register enabled patterns.
+    for (const p of customPatterns.filter(cp => cp.enabled !== false)) {
+      try {
+        const regex = p.regex;
+        const prefix = p.redactPrefix || `${p.name.toUpperCase()}_[REDACTED]`;
+        window.SG_DETECTORS.register({
+          name: 'custom_' + p.name,
+          kind: 'api',
+          test(text) {
+            const rx = new RegExp(regex, 'g');
+            const out = [];
+            for (const m of text.matchAll(rx))
+              out.push({ type: 'api', key: 'custom_' + p.name, match: m[0], index: m.index ?? 0, severity: 'high' });
+            return out;
+          },
+          redact() { return prefix; }
+        });
+      } catch (_) { /* invalid regex — skip silently */ }
+    }
+  });
+}
+sgLoadCustomPatterns();
 
 // Alt+V one-shot bypass — only active when bypass.altPaste is enabled in policy.
 document.addEventListener('keydown', async (e) => {
