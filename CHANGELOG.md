@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/contrailrisks/snipguard/compare/v0.4.0...v0.5.0) (2026-03-10)
+
+
+### Features
+
+* provider pack 2, AI site expansion, badge, playground, custom patterns ([a51debe](https://github.com/contrailrisks/snipguard/commit/a51debec21bca35213df2ea15a1b824aaac3795e))
+
 ## [0.4.0](https://github.com/contrailrisks/snipguard/compare/v0.3.0...v0.4.0) (2026-03-09)
 
 
